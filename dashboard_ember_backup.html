@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CARI — AI-Based Ransomware Detection Dashboard</title>
+<meta name="description" content="CARI: Cloud-Adaptive Ransomware Intelligence Framework — AI-based ransomware detection using Random Forest, Autoencoder, and Structural Bi-LSTM."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg0:#070b14; --bg1:#0d1321; --bg2:#111a2e; --bg3:#162040;
+  --accent:#00d4ff; --accent2:#7c3aed; --accent3:#10b981;
+  --danger:#ef4444; --warning:#f59e0b; --safe:#22c55e;
+  --text:#e2e8f0; --text2:#94a3b8;
+  --border:rgba(0,212,255,0.12);
+  --glow:0 0 20px rgba(0,212,255,0.15);
+  --radius:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:var(--bg0);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0;
+}
+#matrix-canvas{position:fixed;top:0;left:0;width:100%;height:100%;opacity:0.04;pointer-events:none;z-index:0;}
+
+/* Header */
+.header{
+  position:relative;z-index:10;padding:1.75rem 2rem 1.25rem;
+  background:linear-gradient(180deg,rgba(0,212,255,0.07) 0%,transparent 100%);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;
+}
+.logo-icon{
+  width:54px;height:54px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border-radius:14px;display:flex;align-items:center;justify-content:center;
+  font-size:1.7rem;flex-shrink:0;
+  box-shadow:0 0 30px rgba(0,212,255,0.3);
+}
+.header-text h1{
+  font-size:1.6rem;font-weight:800;letter-spacing:-0.5px;
+  background:linear-gradient(135deg,#fff 0%,var(--accent) 55%,var(--accent2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.header-text p{font-size:0.8rem;color:var(--text2);margin-top:3px;}
+.demo-badge{
+  margin-left:auto;padding:6px 14px;
+  background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);
+  border-radius:20px;font-size:0.75rem;font-weight:600;color:var(--warning);
+  letter-spacing:0.5px;animation:pulse-badge 2s ease-in-out infinite;
+}
+@keyframes pulse-badge{0%,100%{opacity:1;}50%{opacity:0.55;}}
+
+/* Layout */
+.main{
+  position:relative;z-index:5;max-width:1400px;margin:0 auto;
+  padding:2rem;display:grid;grid-template-columns:1fr 1.45fr;gap:1.5rem;
+}
+@media(max-width:960px){.main{grid-template-columns:1fr;}}
+.col{display:flex;flex-direction:column;gap:1.5rem;}
+
+/* Card */
+.card{
+  background:var(--bg1);border:1px solid var(--border);
+  border-radius:var(--radius);padding:1.4rem;
+  transition:box-shadow 0.3s;
+}
+.card:hover{box-shadow:var(--glow);}
+.card-title{
+  font-size:0.68rem;font-weight:700;letter-spacing:1.5px;
+  color:var(--accent);text-transform:uppercase;
+  display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;
+}
+.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 1.5s ease-in-out infinite;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.15;}}
+
+/* Stats */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.7rem;}
+.stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.7rem;text-align:center;}
+.stat-box .val{
+  font-size:1.25rem;font-weight:700;font-family:'Fira Code',monospace;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.stat-box .lbl{font-size:0.65rem;color:var(--text2);margin-top:2px;}
+.note-box{
+  margin-top:0.9rem;padding:0.7rem 1rem;
+  background:rgba(245,158,11,0.05);border-left:3px solid var(--warning);
+  border-radius:0 6px 6px 0;font-size:0.74rem;color:var(--text2);line-height:1.55;
+}
+
+/* Upload */
+.upload-zone{
+  border:2px dashed var(--border);border-radius:var(--radius);
+  padding:1.75rem 1.5rem;text-align:center;cursor:pointer;
+  transition:border-color 0.25s,background 0.25s;
+}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(0,212,255,0.04);}
+.up-icon{font-size:2.2rem;margin-bottom:0.4rem;opacity:0.7;}
+.up-text{font-size:0.88rem;color:var(--text2);}
+.up-sub{font-size:0.72rem;color:var(--text2);margin-top:0.25rem;opacity:0.65;}
+#file-input{display:none;}
+#chosen-file{margin-top:0.65rem;font-size:0.78rem;color:var(--accent);font-family:'Fira Code',monospace;min-height:1rem;}
+
+/* Demo chips */
+.demo-samples{display:flex;flex-wrap:wrap;gap:0.45rem;margin-top:0.9rem;}
+.chip{
+  padding:4px 11px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:20px;font-size:0.7rem;color:var(--text2);cursor:pointer;
+  transition:all 0.18s;font-family:'Fira Code',monospace;
+}
+.chip:hover{border-color:var(--accent);color:var(--accent);}
+.chip.mal{border-color:rgba(239,68,68,0.3);color:rgba(239,68,68,0.85);}
+.chip.ben{border-color:rgba(34,197,94,0.3);color:rgba(34,197,94,0.85);}
+
+/* Analyze button */
+.btn-analyze{
+  width:100%;margin-top:1.1rem;padding:0.85rem 2rem;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border:none;border-radius:10px;font-size:0.92rem;font-weight:700;
+  letter-spacing:0.4px;color:#fff;cursor:pointer;
+  transition:opacity 0.2s,transform 0.12s,box-shadow 0.25s;
+  box-shadow:0 4px 22px rgba(0,212,255,0.18);
+  display:flex;align-items:center;justify-content:center;gap:0.5rem;
+}
+.btn-analyze:hover:not(:disabled){opacity:0.9;transform:translateY(-1px);box-shadow:0 8px 30px rgba(0,212,255,0.32);}
+.btn-analyze:active{transform:translateY(0);}
+.btn-analyze:disabled{opacity:0.45;cursor:not-allowed;}
+
+/* Results */
+#results-panel{display:none;}
+.verdict-banner{
+  display:flex;align-items:center;gap:1.2rem;padding:1.15rem 1.4rem;
+  border-radius:var(--radius);margin-bottom:1.1rem;
+  position:relative;overflow:hidden;
+}
+.verdict-banner::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0.05) 0%,transparent 55%);}
+.verdict-banner.malicious{background:linear-gradient(135deg,rgba(239,68,68,0.14),rgba(124,58,237,0.09));border:1px solid rgba(239,68,68,0.32);}
+.verdict-banner.benign{background:linear-gradient(135deg,rgba(34,197,94,0.14),rgba(16,185,129,0.09));border:1px solid rgba(34,197,94,0.32);}
+.v-icon{font-size:2.3rem;flex-shrink:0;}
+.v-text h2{font-size:1.4rem;font-weight:800;letter-spacing:-0.4px;}
+.v-text .sub{font-size:0.76rem;color:var(--text2);margin-top:2px;}
+.v-text .conf{font-size:0.82rem;font-weight:600;margin-top:5px;font-family:'Fira Code',monospace;}
+
+/* Gauge */
+.gauge-wrap{margin:0.4rem 0 1.1rem;}
+.gauge-lbl{display:flex;justify-content:space-between;font-size:0.68rem;color:var(--text2);margin-bottom:3px;}
+.gauge-track{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;}
+.gauge-fill{
+  height:100%;border-radius:4px;
+  background:linear-gradient(90deg,var(--safe),var(--warning),var(--danger));
+  transition:width 0.8s cubic-bezier(0.4,0,0.2,1);
+  position:relative;
+}
+.gauge-fill::after{content:'';position:absolute;top:0;right:0;width:3px;height:100%;background:#fff;border-radius:2px;opacity:0.75;}
+
+/* Engine grid */
+.engine-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:1.1rem;}
+.eng-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.7rem;}
+.eng-name{font-size:0.66rem;font-weight:600;color:var(--text2);margin-bottom:0.25rem;}
+.eng-score{font-size:1.05rem;font-weight:700;font-family:'Fira Code',monospace;}
+.eng-bar{height:4px;background:var(--bg3);border-radius:2px;margin-top:5px;overflow:hidden;}
+.eng-bar-fill{height:100%;border-radius:2px;transition:width 0.65s ease;}
+
+/* Action row */
+.action-row{display:flex;align-items:center;gap:0.85rem;margin-bottom:1.1rem;flex-wrap:wrap;}
+.a-badge{
+  display:inline-flex;align-items:center;gap:0.35rem;
+  padding:5px 13px;border-radius:20px;
+  font-size:0.72rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;
+}
+.a-allow{background:rgba(34,197,94,0.12);color:var(--safe);border:1px solid rgba(34,197,94,0.3);}
+.a-honeypot{background:rgba(245,158,11,0.12);color:var(--warning);border:1px solid rgba(245,158,11,0.3);}
+.a-contain{background:rgba(239,68,68,0.12);color:var(--danger);border:1px solid rgba(239,68,68,0.3);}
+.unc-badge{font-size:0.7rem;color:var(--text2);padding:4px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;}
+
+/* Feature bars */
+.feat-row{display:flex;align-items:center;gap:0.7rem;padding:4px 0;border-bottom:1px solid var(--border);}
+.feat-row:last-child{border-bottom:none;}
+.feat-name{width:62px;font-size:0.68rem;font-family:'Fira Code',monospace;color:var(--text2);flex-shrink:0;}
+.feat-bar-wrap{flex:1;height:11px;background:var(--bg2);border-radius:5px;overflow:hidden;}
+.feat-bar{height:100%;border-radius:5px;transition:width 0.55s ease;}
+.fb-pos{background:linear-gradient(90deg,rgba(239,68,68,0.35),rgba(239,68,68,0.8));}
+.fb-neg{background:linear-gradient(90deg,rgba(34,197,94,0.8),rgba(34,197,94,0.35));}
+.feat-val{width:68px;text-align:right;font-size:0.66rem;font-family:'Fira Code',monospace;color:var(--text2);}
+
+/* Metrics table */
+.tab-row{display:flex;gap:0.45rem;margin-bottom:0.9rem;flex-wrap:wrap;}
+.tab-btn{
+  padding:5px 13px;border:1px solid var(--border);border-radius:20px;
+  background:transparent;color:var(--text2);font-size:0.73rem;cursor:pointer;
+  transition:all 0.18s;font-family:'Inter',sans-serif;
+}
+.tab-btn.active{background:rgba(0,212,255,0.12);border-color:var(--accent);color:var(--accent);font-weight:600;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:0.8rem;}
+thead th{
+  padding:9px 13px;background:var(--bg2);text-align:left;
+  font-weight:600;color:var(--text2);font-size:0.68rem;letter-spacing:0.8px;
+  text-transform:uppercase;border-bottom:1px solid var(--border);
+}
+tbody td{
+  padding:9px 13px;border-bottom:1px solid rgba(255,255,255,0.04);
+  font-family:'Fira Code',monospace;font-size:0.76rem;
+}
+tbody tr:hover{background:var(--bg2);}
+.mname{font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:600;color:var(--text);}
+.best{color:var(--accent);font-weight:700;}
+.mbar{display:inline-block;height:5px;vertical-align:middle;border-radius:2px;margin-left:5px;background:linear-gradient(90deg,var(--accent2),var(--accent));opacity:0.65;}
+
+/* Tier grid */
+.tier-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.7rem;}
+.tier-card{background:var(--bg2);border-radius:8px;padding:0.9rem;text-align:center;border:1px solid var(--border);}
+.tier-val{font-size:1.45rem;font-weight:700;font-family:'Fira Code',monospace;}
+.tier-lbl{font-size:0.68rem;color:var(--text2);margin-top:3px;}
+.tier-card.allow .tier-val{color:var(--safe);}
+.tier-card.honey .tier-val{color:var(--warning);}
+.tier-card.contain .tier-val{color:var(--danger);}
+
+/* Spinner */
+.spinner{
+  width:18px;height:18px;border:2px solid rgba(255,255,255,0.28);
+  border-top-color:#fff;border-radius:50%;animation:spin 0.65s linear infinite;display:none;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg0);}
+::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px;}
+
+/* Footer */
+.footer{
+  text-align:center;padding:1.4rem;font-size:0.7rem;
+  color:var(--text2);opacity:0.55;position:relative;z-index:5;
+  border-top:1px solid var(--border);
+}
+</style>
+</head>
+<body>
+<canvas id="matrix-canvas"></canvas>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo-icon">🛡</div>
+  <div class="header-text">
+    <h1>CARI — AI-Based Ransomware Detection</h1>
+    <p>Cloud-Adaptive Ransomware Intelligence Framework · EMBER 2018 v2 · Hybrid RF + Autoencoder + Structural Bi-LSTM</p>
+  </div>
+  <span class="demo-badge">⚡ DEMO MODE</span>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT -->
+  <div class="col">
+
+    <!-- Dataset -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Dataset Information</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="val">150K</div><div class="lbl">Total Samples</div></div>
+        <div class="stat-box"><div class="val">2,381</div><div class="lbl">Features</div></div>
+        <div class="stat-box"><div class="val">~50%</div><div class="lbl">Malicious Rate</div></div>
+        <div class="stat-box"><div class="val">84K</div><div class="lbl">Train Set</div></div>
+        <div class="stat-box"><div class="val">12K</div><div class="lbl">Val Set</div></div>
+        <div class="stat-box"><div class="val">24K</div><div class="lbl">Test Set</div></div>
+      </div>
+      <div class="note-box">
+        ⚠ <strong>EMBER 2018 v2</strong> is a general Windows PE malware/benign dataset — not ransomware-specific.
+        This classifier learns <em>malicious vs. benign</em>. Ransomware is a subset of malware.
+        A production system would also validate against ransomware-specific datasets (e.g. CIC-Ransomware-2017).
+      </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Analyze File</div>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="up-icon">📂</div>
+        <div class="up-text">Drop a file here or click to browse</div>
+        <div class="up-sub">.exe · .dll · .bin · any file — demo uses filename heuristics</div>
+        <div id="chosen-file"></div>
+      </div>
+      <input type="file" id="file-input" accept="*/*"/>
+      <div style="margin-top:0.9rem;">
+        <div style="font-size:0.68rem;color:var(--text2);margin-bottom:0.45rem;">Or select a demo sample:</div>
+        <div class="demo-samples">
+          <span class="chip mal" onclick="setDemo('WannaCry_payload.exe')">WannaCry_payload.exe</span>
+          <span class="chip mal" onclick="setDemo('ryuk_encrypt.bin')">ryuk_encrypt.bin</span>
+          <span class="chip mal" onclick="setDemo('lockbit_ransom.dll')">lockbit_ransom.dll</span>
+          <span class="chip mal" onclick="setDemo('cryptolocker.exe')">cryptolocker.exe</span>
+          <span class="chip ben" onclick="setDemo('chrome_update.exe')">chrome_update.exe</span>
+          <span class="chip ben" onclick="setDemo('notepad.exe')">notepad.exe</span>
+          <span class="chip" onclick="setDemo('unknown_sample_001.exe')">unknown_sample_001.exe</span>
+        </div>
+      </div>
+      <button class="btn-analyze" id="btn-analyze" onclick="runAnalysis()" disabled>
+        <div class="spinner" id="spinner"></div>
+        <span id="btn-text">🔍 Select a File First</span>
+      </button>
+    </div>
+
+    <!-- Results -->
+    <div id="results-panel" class="card">
+      <div class="card-title"><span class="dot"></span>Detection Result <span style="font-weight:400;font-size:0.62rem;margin-left:0.4rem;">[DEMO — not live model inference]</span></div>
+
+      <div id="verdict-banner" class="verdict-banner">
+        <div class="v-icon" id="v-icon">🔎</div>
+        <div class="v-text">
+          <h2 id="v-label">—</h2>
+          <div class="sub" id="v-file">—</div>
+          <div class="conf" id="v-conf">—</div>
+        </div>
+      </div>
+
+      <div class="gauge-wrap">
+        <div class="gauge-lbl">
+          <span>Benign (0.0)</span>
+          <span id="g-score">Score: —</span>
+          <span>Malicious (1.0)</span>
+        </div>
+        <div class="gauge-track">
+          <div class="gauge-fill" id="g-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div id="action-row" class="action-row"></div>
+
+      <div style="font-size:0.68rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.65rem;">Engine Breakdown</div>
+      <div class="engine-grid" id="engine-grid"></div>
+
+      <div style="font-size:0.68rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin:0.9rem 0 0.55rem;">
+        Feature Contributions <span style="font-weight:400;font-size:0.62rem;text-transform:none;">(SHAP-style, demo — based on real RF importances)</span>
+      </div>
+      <div id="shap-bars"></div>
+    </div>
+
+  </div><!-- /LEFT -->
+
+  <!-- RIGHT -->
+  <div class="col">
+
+    <!-- Model Metrics -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Model Evaluation — Actual Test Set Results (24,001 samples)</div>
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="showTab('all')">All Models</button>
+        <button class="tab-btn" onclick="showTab('detail')">Detail</button>
+      </div>
+      <div id="tab-all">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Model</th><th>Accuracy</th><th>Precision</th>
+              <th>Recall</th><th>F1-Score</th><th>FNR</th><th>ROC-AUC</th>
+            </tr></thead>
+            <tbody id="metrics-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="tab-detail" style="display:none;"><div id="detail-content"></div></div>
+    </div>
+
+    <!-- Tiered Response -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Stage 4 — Tiered Response (Test Set: 24,001 samples)</div>
+      <div class="tier-grid">
+        <div class="tier-card allow"><div class="tier-val">12,390</div><div class="tier-lbl">✅ Allow (Clean)</div></div>
+        <div class="tier-card honey"><div class="tier-val">3,949</div><div class="tier-lbl">🪤 Honeypot Redirect</div></div>
+        <div class="tier-card contain"><div class="tier-val">7,662</div><div class="tier-lbl">🔒 Immediate Containment</div></div>
+      </div>
+      <div style="margin-top:0.9rem;">
+        <div style="font-size:0.68rem;color:var(--text2);margin-bottom:0.4rem;">Threat distribution across test set</div>
+        <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;">
+          <div style="width:51.6%;background:var(--safe);opacity:0.7;border-radius:4px 0 0 4px;"></div>
+          <div style="width:16.5%;background:var(--warning);opacity:0.7;"></div>
+          <div style="width:31.9%;background:var(--danger);opacity:0.7;border-radius:0 4px 4px 0;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.63rem;color:var(--text2);margin-top:4px;">
+          <span>Allow 51.6%</span><span>Honeypot 16.5%</span><span>Containment 31.9%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RF Feature Importances -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Random Forest — Top Feature Importances (MDI from notebook)</div>
+      <div id="global-feats"></div>
+      <div style="font-size:0.66rem;color:var(--text2);margin-top:0.7rem;">
+        Mean Decrease in Impurity from 150-tree ensemble (n_estimators=150, max_samples=0.5). Features are EMBER v2 PE attributes — byte histograms, header fields, section info, import/export tables, strings, etc.
+      </div>
+    </div>
+
+    <!-- Pipeline Summary -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>System &amp; Pipeline Summary</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem;margin-bottom:1rem;">
+        <div class="stat-box"><div class="val" style="font-size:0.95rem;">221 ms</div><div class="lbl">End-to-end single-sample latency</div></div>
+        <div class="stat-box"><div class="val" style="font-size:0.95rem;">13.8%</div><div class="lbl">Flagged for human review (MC Dropout)</div></div>
+        <div class="stat-box"><div class="val" style="font-size:0.95rem;">3</div><div class="lbl">Federated tenants (FedAvg simulation)</div></div>
+        <div class="stat-box"><div class="val" style="font-size:0.95rem;">95.2%</div><div class="lbl">CARI Fused accuracy on 24K test samples</div></div>
+      </div>
+      <div style="font-size:0.71rem;color:var(--text2);line-height:1.65;">
+        <strong style="color:var(--accent);">5-Stage CARI Pipeline:</strong><br/>
+        <span style="color:var(--text2);">
+          <b style="color:var(--text);">Stage 1</b> EMBER download &amp; streaming parquet preprocessing →
+          <b style="color:var(--text);">Stage 2</b> Federated Bi-LSTM training (FedAvg, 3 tenants, 3 rounds) →
+          <b style="color:var(--text);">Stage 3</b> Hybrid detection engine (RF + Autoencoder + Bi-LSTM, AUC-weighted fusion) →
+          <b style="color:var(--text);">Stage 4</b> Tiered response (Allow / Honeypot / Immediate Containment) →
+          <b style="color:var(--text);">Stage 5</b> MC Dropout uncertainty quantification (30 forward passes)
+        </span>
+      </div>
+    </div>
+
+  </div><!-- /RIGHT -->
+
+</div><!-- /MAIN -->
+
+<footer class="footer">
+  CARI Framework · EMBER 2018 v2 · Models trained on Google Colab — demo mode active (no local model weights) · Results from notebook output are real
+</footer>
+
+<script>
+// ── Matrix rain ──
+(function(){
+  const c=document.getElementById('matrix-canvas');
+  const ctx=c.getContext('2d');
+  let W,H,cols,drops;
+  const CH='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&';
+  function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;cols=Math.floor(W/18);drops=Array(cols).fill(1);}
+  resize();window.addEventListener('resize',resize);
+  setInterval(()=>{
+    ctx.fillStyle='rgba(7,11,20,0.07)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#00d4ff';ctx.font='13px Fira Code,monospace';
+    drops.forEach((y,i)=>{
+      ctx.globalAlpha=Math.random()*0.5+0.1;
+      ctx.fillText(CH[Math.floor(Math.random()*CH.length)],i*18,y*18);
+      ctx.globalAlpha=1;
+      if(y*18>H&&Math.random()>0.975)drops[i]=0;drops[i]++;
+    });
+  },60);
+})();
+
+// ── Data ──
+const MODELS={
+  "Random Forest":{acc:0.9407,prec:0.9478,rec:0.9327,f1:0.9402,fnr:0.0673,auc:0.9877,desc:"150 estimators · max_samples=0.5 · class-weighted. Interpretable static engine (Engine A)."},
+  "Autoencoder":{acc:0.5004,prec:0.6667,rec:0.0002,f1:0.0003,fnr:0.9998,auc:0.5855,desc:"Deep autoencoder trained benign-only for anomaly detection (Engine B). Standalone AUC modest — contributes via AUC-weighted fusion."},
+  "Structural Bi-LSTM":{acc:0.9445,prec:0.9499,rec:0.9383,f1:0.9441,fnr:0.0617,auc:0.9862,desc:"Block-structured Bi-LSTM — PE feature groups (header, sections, imports, strings…) treated as temporal sequence (Engine C)."},
+  "CARI Fused":{acc:0.9520,prec:0.9668,rec:0.9360,f1:0.9512,fnr:0.0640,auc:0.9890,desc:"AUC-weighted ensemble of all three engines. Best overall — the CARI Hybrid Detection Engine."},
+};
+const TOP_FEATS=[["F2360",0.013451],["F2361",0.011711],["F638",0.011260],["F509",0.008989],["F511",0.008424],["F505",0.008167],["F507",0.007822],["F500",0.006944],["F502",0.006766],["F659",0.006765],["F504",0.006342],["F501",0.006030]];
+
+// ── Metrics table ──
+(function(){
+  const tb=document.getElementById('metrics-tbody');
+  Object.entries(MODELS).forEach(([n,m])=>{
+    const best=n==='CARI Fused';
+    const f=(v,hi)=>`<td class="${hi?'best':''}">${(v*100).toFixed(2)}%<div class="mbar" style="width:${v*55}px;opacity:${hi?0.85:0.45}"></div></td>`;
+    tb.innerHTML+=`<tr>
+      <td><span class="mname ${best?'best':''}">${n}</span></td>
+      ${f(m.acc,best&&m.acc===Math.max(...Object.values(MODELS).map(x=>x.acc)))}
+      ${f(m.prec)}<br/>${f(m.rec)}
+      ${f(m.f1,best&&m.f1===Math.max(...Object.values(MODELS).map(x=>x.f1)))}
+      <td style="color:${m.fnr>0.5?'#ef4444':'#94a3b8'}">${(m.fnr*100).toFixed(2)}%</td>
+      <td style="color:${m.auc>0.95?'#00d4ff':'#94a3b8'}">${m.auc.toFixed(4)}</td>
+    </tr>`;
+  });
+  document.getElementById('detail-content').innerHTML=Object.entries(MODELS).map(([n,m])=>`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.9rem;margin-bottom:0.65rem;">
+      <div style="font-weight:700;color:${n==='CARI Fused'?'var(--accent)':'var(--text)'};margin-bottom:0.35rem;">${n}</div>
+      <div style="font-size:0.7rem;color:var(--text2);margin-bottom:0.45rem;">${m.desc}</div>
+      <div style="display:flex;gap:0.85rem;flex-wrap:wrap;">
+        ${[['Accuracy',m.acc],['Precision',m.prec],['Recall',m.rec],['F1',m.f1],['FNR',m.fnr],['ROC-AUC',m.auc]].map(([k,v])=>`
+          <div><div style="font-size:0.62rem;color:var(--text2);text-transform:uppercase;">${k}</div>
+          <div style="font-size:0.88rem;font-weight:700;font-family:'Fira Code',monospace;color:${k==='FNR'&&v>0.5?'#ef4444':'var(--accent)'};">${(v*100).toFixed(2)}%</div></div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+})();
+
+// ── Global feature bars ──
+(function(){
+  const el=document.getElementById('global-feats');
+  const max=TOP_FEATS[0][1];
+  el.innerHTML=TOP_FEATS.map(([f,v])=>`
+    <div class="feat-row">
+      <div class="feat-name">${f}</div>
+      <div class="feat-bar-wrap"><div class="feat-bar fb-pos" style="width:${(v/max*100).toFixed(1)}%"></div></div>
+      <div class="feat-val">${v.toFixed(5)}</div>
+    </div>`).join('');
+})();
+
+// ── Tab ──
+function showTab(t){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',
+    (t==='all'&&b.textContent.includes('All'))||(t==='detail'&&b.textContent.includes('Detail'))));
+  document.getElementById('tab-all').style.display=t==='all'?'':'none';
+  document.getElementById('tab-detail').style.display=t==='detail'?'':'none';
+}
+
+// ── File selection ──
+let curFile=null;
+function setDemo(n){
+  curFile=n;
+  document.getElementById('chosen-file').textContent='📁 '+n;
+  document.getElementById('btn-analyze').disabled=false;
+  document.getElementById('btn-text').textContent='🔍 Analyze File';
+}
+document.getElementById('file-input').addEventListener('change',function(){
+  if(this.files[0]){setDemo(this.files[0].name);}
+});
+const zone=document.getElementById('upload-zone');
+zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
+zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
+zone.addEventListener('drop',e=>{
+  e.preventDefault();zone.classList.remove('drag');
+  if(e.dataTransfer.files[0])setDemo(e.dataTransfer.files[0].name);
+});
+
+// ── Analysis ──
+async function runAnalysis(){
+  if(!curFile)return;
+  const btn=document.getElementById('btn-analyze');
+  const sp=document.getElementById('spinner');
+  btn.disabled=true;sp.style.display='block';
+  document.getElementById('btn-text').textContent='Analyzing…';
+  await new Promise(r=>setTimeout(r,850));
+  try{
+    const r=await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:curFile})});
+    const d=await r.json();
+    renderResults(d);
+  }catch(e){
+    console.error(e);
+    document.getElementById('btn-text').textContent='Error — try again';
+  }finally{
+    btn.disabled=false;sp.style.display='none';
+    document.getElementById('btn-text').textContent='🔍 Analyze Again';
+  }
+}
+
+function colFor(s){return s>=0.7?'#ef4444':s>=0.4?'#f59e0b':'#22c55e';}
+
+function renderResults(d){
+  const panel=document.getElementById('results-panel');
+  panel.style.display='block';
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+
+  const isMal=d.label==='MALICIOUS';
+  document.getElementById('verdict-banner').className='verdict-banner '+(isMal?'malicious':'benign');
+  document.getElementById('v-icon').textContent=isMal?'🚨':'✅';
+  document.getElementById('v-label').textContent=d.label;
+  document.getElementById('v-label').style.color=isMal?'#ef4444':'#22c55e';
+  document.getElementById('v-file').textContent=d.filename;
+  document.getElementById('v-conf').textContent=`Confidence: ${d.confidence_pct.toFixed(1)}%  |  Fused Score: ${d.fused_score.toFixed(4)}`;
+
+  document.getElementById('g-fill').style.width=(d.fused_score*100)+'%';
+  document.getElementById('g-score').textContent='Score: '+d.fused_score.toFixed(4);
+
+  const amap={
+    allow:['✅ ACTION: ALLOW','a-allow'],
+    honeypot_redirect:['🪤 ACTION: HONEYPOT REDIRECT','a-honeypot'],
+    immediate_containment:['🔒 ACTION: IMMEDIATE CONTAINMENT','a-contain'],
+  };
+  const [at,ac]=amap[d.tiered_action];
+  document.getElementById('action-row').innerHTML=`
+    <span class="a-badge ${ac}">${at}</span>
+    <span class="unc-badge" style="${d.high_uncertainty?'color:#f59e0b;':''}">
+      MC Uncertainty: ${(d.mc_uncertainty*100).toFixed(1)}%${d.high_uncertainty?' ⚠ Human Review':''}
+    </span>`;
+
+  const eg=document.getElementById('engine-grid');
+  eg.innerHTML='';
+  Object.entries(d.engine_scores).forEach(([name,score])=>{
+    const col=colFor(score);
+    eg.innerHTML+=`<div class="eng-card">
+      <div class="eng-name">${name}</div>
+      <div class="eng-score" style="color:${col}">${(score*100).toFixed(1)}%</div>
+      <div class="eng-bar"><div class="eng-bar-fill" style="width:${score*100}%;background:${col};opacity:0.7;"></div></div>
+    </div>`;
+  });
+
+  const sb=document.getElementById('shap-bars');
+  const mx=Math.max(...d.top_features.map(f=>Math.abs(f.shap_value)));
+  sb.innerHTML=d.top_features.map(f=>{
+    const pct=(Math.abs(f.shap_value)/mx*100).toFixed(1);
+    const cls=f.shap_value>0?'fb-pos':'fb-neg';
+    const dir=f.shap_value>0?'▲ toward malicious':'▼ toward benign';
+    return `<div class="feat-row">
+      <div class="feat-name">${f.feature}</div>
+      <div class="feat-bar-wrap"><div class="feat-bar ${cls}" style="width:${pct}%"></div></div>
+      <div class="feat-val" style="color:${cls==='fb-pos'?'#ef4444':'#22c55e'}">${dir}</div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+
+.env
+.kaggle/
+kaggle.json
+access_token
+
+data/ransap/
+data/ember/
+*.parquet
+*.csv
+
+.vscode/
