@@ -1,15 +1,12 @@
-# CARI — AI-Based Ransomware Detection (RanSAP Edition)
+# CARI — AI-Based Ransomware Detection 
 
 **Cloud-Adaptive Ransomware Intelligence Framework**
-Behavioral ransomware detection using RanSAP storage-access logs.
 
 ---
 
 ## Overview
 
-This project implements a hybrid behavioral ransomware detection system using the
-**RanSAP dataset** — ATA storage-access traces captured during ransomware and benign
-program execution on Windows VMs.
+
 
 ### Why Behavioral Detection?
 
@@ -23,7 +20,7 @@ Behavioral ATA-trace analysis detects ransomware by its distinctive **write patt
 ### Detection Pipeline
 
 ```
-RanSAP CSV Logs
+EMBER
      ↓
 Feature Extraction (per run)
      ↓
